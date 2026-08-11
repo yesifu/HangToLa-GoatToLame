@@ -1,0 +1,1289 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>从夯到拉模拟器</title>
+  <script>
+    (() => {
+      try {
+        const savedTheme = localStorage.getItem('hangla-theme');
+        const savedNames = localStorage.getItem('hangla-show-names');
+        const savedLanguage = localStorage.getItem('hangla-language');
+        const systemTheme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = savedTheme || systemTheme;
+        document.documentElement.dataset.names = savedNames === 'true' ? 'show' : 'hide';
+        document.documentElement.dataset.language = savedLanguage === 'en' ? 'en' : 'zh';
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+        document.documentElement.dataset.names = 'hide';
+        document.documentElement.dataset.language = 'zh';
+      }
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --page-bg: #f2f3f5;
+      --surface: #ffffff;
+      --surface-soft: #f7f7f8;
+      --ink: #17181c;
+      --muted: #737782;
+      --line: #e0e2e6;
+      --board: #f8f8f9;
+      --board-line: #e7e8eb;
+      --card-bg: #ffffff;
+      --card-name: #31343b;
+      --primary: #5148e8;
+      --primary-hover: #443ad9;
+      --danger: #e83b45;
+      --danger-hover: #d92c37;
+      --shadow: 0 12px 32px rgba(25, 28, 36, 0.08);
+      --label-width: clamp(92px, 9vw, 120px);
+      --tile-size: clamp(76px, 7vw, 102px);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --page-bg: #0d1015;
+      --surface: #151a22;
+      --surface-soft: #11161d;
+      --ink: #f4f6f8;
+      --muted: #9da5b2;
+      --line: #2b3442;
+      --board: #1b2431;
+      --board-line: #303a49;
+      --card-bg: #252f3e;
+      --card-name: #eef1f5;
+      --primary: #675df3;
+      --primary-hover: #766ef7;
+      --danger: #e94751;
+      --danger-hover: #f05761;
+      --shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    html {
+      min-width: 320px;
+      background: var(--page-bg);
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background: var(--page-bg);
+      transition: color 180ms ease, background 180ms ease;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app-shell {
+      width: min(1460px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 16px 0 26px;
+    }
+
+    .topbar {
+      display: flex;
+      min-height: 66px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+      padding: 10px 12px 10px 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      min-width: 220px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 10px;
+      color: #fff;
+      background: linear-gradient(145deg, #655df3, #4035d4);
+      font-size: 22px;
+      font-weight: 1000;
+      box-shadow: 0 7px 16px rgba(81, 72, 232, 0.22);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 21px;
+      font-weight: 900;
+      line-height: 1.18;
+      letter-spacing: -0.035em;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .control-button {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 0 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease,
+        color 140ms ease, opacity 140ms ease;
+    }
+
+    .control-button:hover {
+      z-index: 1;
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--line));
+      transform: translateY(-1px);
+    }
+
+    .control-button:active {
+      transform: translateY(0);
+    }
+
+    .control-button:focus-visible,
+    .image-card:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--primary) 28%, transparent);
+      outline-offset: 2px;
+    }
+
+    .control-button:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .control-button.primary {
+      border-color: var(--primary);
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .control-button.primary:hover {
+      border-color: var(--primary-hover);
+      background: var(--primary-hover);
+    }
+
+    .control-button.danger {
+      border-color: color-mix(in srgb, var(--danger) 44%, var(--line));
+      color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+    }
+
+    .control-button.danger:hover {
+      border-color: var(--danger-hover);
+      color: #fff;
+      background: var(--danger-hover);
+    }
+
+    .control-button svg {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2;
+    }
+
+    .theme-glyph,
+    .name-glyph {
+      display: grid;
+      width: 18px;
+      place-items: center;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .tier-board-wrap {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--board);
+      box-shadow: var(--shadow);
+      transition: border-color 180ms ease, background 180ms ease;
+    }
+
+    .tier-row {
+      display: grid;
+      grid-template-columns: var(--label-width) minmax(0, 1fr);
+      min-height: 108px;
+      background: var(--board);
+    }
+
+    .tier-row + .tier-row {
+      border-top: 1px solid var(--board-line);
+    }
+
+    .tier-row.unassigned-row {
+      min-height: 164px;
+    }
+
+    .tier-label {
+      display: grid;
+      place-items: center;
+      padding: 8px;
+      color: #fff;
+      background: var(--tier-color);
+      font-size: clamp(28px, 3.5vw, 48px);
+      font-weight: 1000;
+      line-height: 0.98;
+      letter-spacing: -0.075em;
+      text-align: center;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .tier-label.long-label {
+      font-size: clamp(23px, 2.8vw, 39px);
+      line-height: 1.04;
+    }
+
+    .tier-label.unassigned-label {
+      font-size: clamp(22px, 2.5vw, 34px);
+      line-height: 1.08;
+      letter-spacing: -0.04em;
+    }
+
+    :root[data-language="en"] .tier-label {
+      font-size: clamp(22px, 2.9vw, 40px);
+      letter-spacing: -0.04em;
+    }
+
+    :root[data-language="en"] .tier-label.long-label {
+      font-size: clamp(21px, 2.5vw, 34px);
+    }
+
+    :root[data-language="en"] .tier-label.unassigned-label {
+      font-size: clamp(17px, 2vw, 27px);
+      letter-spacing: -0.03em;
+    }
+
+    .tier-dropzone {
+      display: flex;
+      min-width: 0;
+      min-height: inherit;
+      align-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 9px 12px;
+      border: 2px solid transparent;
+      background: var(--board);
+      transition: border-color 140ms ease, background 140ms ease;
+    }
+
+    .tier-dropzone.is-dragover {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 10%, var(--board));
+    }
+
+    .material-grid {
+      align-content: flex-start;
+      align-items: flex-start;
+    }
+
+    .image-card {
+      position: relative;
+      display: block;
+      width: var(--tile-size);
+      flex: 0 0 var(--tile-size);
+      padding: 0;
+      overflow: hidden;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      color: var(--card-name);
+      background: var(--card-bg);
+      cursor: grab;
+      box-shadow: 0 4px 12px rgba(18, 22, 29, 0.16);
+      transition: border-color 130ms ease, box-shadow 130ms ease, transform 130ms ease,
+        opacity 130ms ease;
+      transform-origin: center center;
+      user-select: none;
+    }
+
+    .image-card:hover {
+      z-index: 2;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(18, 22, 29, 0.22);
+    }
+
+    .material-grid .image-card:hover,
+    .material-grid .image-card:active {
+      z-index: 12;
+      transform: translateY(-8px) scale(1.8);
+      transform-origin: center bottom;
+      box-shadow: 0 14px 28px rgba(18, 22, 29, 0.28);
+    }
+
+    .image-card.is-selected {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 24%, transparent),
+        0 8px 18px rgba(18, 22, 29, 0.18);
+    }
+
+    .image-card.is-dragging {
+      z-index: 12;
+      opacity: 0.88;
+      cursor: grabbing;
+      transform: translateY(-8px) scale(1.8);
+      transform-origin: center bottom;
+      box-shadow: 0 14px 28px rgba(18, 22, 29, 0.28);
+    }
+
+    .drag-preview-canvas {
+      position: fixed !important;
+      top: -10000px !important;
+      left: -10000px !important;
+      z-index: 9999 !important;
+      margin: 0 !important;
+      pointer-events: none !important;
+    }
+
+    .image-card img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      pointer-events: none;
+    }
+
+    .image-name {
+      display: block;
+      overflow: hidden;
+      padding: 5px 6px 6px;
+      color: var(--card-name);
+      background: var(--card-bg);
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.12;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    :root:not([data-names="show"]) .image-name {
+      display: none;
+    }
+
+    .remove-image {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      display: grid;
+      width: 23px;
+      height: 23px;
+      padding: 0;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      color: #fff;
+      background: rgba(14, 17, 23, 0.76);
+      cursor: pointer;
+      opacity: 0;
+      transform: scale(0.85);
+      transition: opacity 120ms ease, transform 120ms ease, background 120ms ease;
+    }
+
+    .image-card:hover .remove-image,
+    .image-card:focus-within .remove-image {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .remove-image:hover {
+      background: var(--danger);
+    }
+
+    .demo-controls {
+      display: none;
+    }
+
+    .selected-hint {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 80;
+      max-width: min(340px, calc(100% - 36px));
+      padding: 10px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      color: #fff;
+      background: rgba(20, 24, 32, 0.9);
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(9px);
+      transition: opacity 140ms ease, transform 140ms ease;
+    }
+
+    .selected-hint.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    body.demo-mode {
+      background: var(--board);
+    }
+
+    .demo-mode .app-shell {
+      padding-top: 14px;
+    }
+
+    .demo-mode .topbar {
+      display: none;
+    }
+
+    .demo-mode .tier-row:not(.unassigned-row) {
+      min-height: 124px;
+    }
+
+    .demo-mode .demo-controls {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 70;
+      display: flex;
+      gap: 7px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      box-shadow: var(--shadow);
+      opacity: 0.24;
+      backdrop-filter: blur(14px);
+      transition: opacity 160ms ease;
+    }
+
+    .demo-mode .demo-controls:hover,
+    .demo-mode .demo-controls:focus-within {
+      opacity: 1;
+    }
+
+    .demo-mode .demo-controls .control-button {
+      min-height: 38px;
+      padding: 0 12px;
+      background: transparent;
+    }
+
+    .demo-mode .remove-image {
+      display: none;
+    }
+
+    @media (max-width: 840px) {
+      .topbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .control-button {
+        min-width: 0;
+        padding: 0 9px;
+      }
+
+      .tier-row {
+        min-height: 100px;
+      }
+
+      .tier-row.unassigned-row {
+        min-height: 150px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      :root {
+        --label-width: 74px;
+        --tile-size: 70px;
+      }
+
+      .app-shell {
+        width: calc(100% - 16px);
+        padding-top: 8px;
+      }
+
+      .topbar {
+        gap: 10px;
+        margin-bottom: 8px;
+        padding: 11px;
+        border-radius: 12px;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        font-size: 20px;
+      }
+
+      .brand h1 {
+        font-size: 18px;
+      }
+
+      .brand p {
+        display: none;
+      }
+
+      .toolbar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .tier-board-wrap {
+        border-radius: 10px;
+      }
+
+      .tier-row {
+        min-height: 92px;
+      }
+
+      .tier-row.unassigned-row {
+        min-height: 136px;
+      }
+
+      .tier-label {
+        padding: 5px;
+        font-size: 28px;
+      }
+
+      .tier-label.long-label {
+        font-size: 22px;
+      }
+
+      .tier-label.unassigned-label {
+        font-size: 20px;
+      }
+
+      .tier-dropzone {
+        gap: 7px;
+        padding: 7px;
+      }
+
+      .image-name {
+        font-size: 9px;
+      }
+
+      .remove-image {
+        width: 21px;
+        height: 21px;
+        opacity: 1;
+      }
+
+      .demo-mode .demo-controls {
+        top: 8px;
+        right: 8px;
+      }
+
+      .demo-mode .tier-row:not(.unassigned-row) {
+        min-height: 102px;
+      }
+
+      .demo-mode .demo-controls .control-button {
+        min-height: 34px;
+        padding: 0 9px;
+        font-size: 12px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" data-i18n="brandMark" aria-hidden="true">夯</div>
+        <div>
+          <h1 data-i18n="title">从夯到拉模拟器</h1>
+          <p data-i18n="subtitle">上传图片，拖入等级，开启演示后即可录制</p>
+        </div>
+      </div>
+
+      <section class="toolbar" data-i18n-aria="toolbarAria" aria-label="操作工具栏">
+        <input id="fileInput" class="sr-only" type="file" accept="image/*" multiple>
+        <button id="uploadButton" class="control-button primary" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 16V4"></path>
+            <path d="m7 9 5-5 5 5"></path>
+            <path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"></path>
+          </svg>
+          <span data-i18n="upload">上传图片</span>
+        </button>
+        <button id="clearButton" class="control-button danger" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18"></path>
+            <path d="M8 6V4h8v2"></path>
+            <path d="m19 6-1 14H6L5 6"></path>
+          </svg>
+          <span data-i18n="clear">清空</span>
+        </button>
+        <button class="control-button name-toggle" type="button" aria-label="切换文件名显示">
+          <span class="name-glyph" aria-hidden="true">Aa</span>
+          <span class="name-label"></span>
+        </button>
+        <button class="control-button theme-toggle" type="button" aria-label="切换页面主题">
+          <span class="theme-glyph" aria-hidden="true"></span>
+          <span class="theme-label"></span>
+        </button>
+        <button class="control-button language-toggle" type="button" aria-label="切换语言">
+          <span class="name-glyph" aria-hidden="true">文</span>
+          <span class="language-label"></span>
+        </button>
+        <button id="demoButton" class="control-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="13" rx="2"></rect>
+            <path d="m8 21 4-4 4 4"></path>
+          </svg>
+          <span data-i18n="demo">演示模式</span>
+        </button>
+      </section>
+    </header>
+
+    <section class="tier-board-wrap" data-i18n-aria="boardAria" aria-label="从夯到拉排行画布">
+      <div class="tier-row" style="--tier-color: linear-gradient(180deg, #ff5359, #ed343b);">
+        <div class="tier-label" data-rank-label="tierGoat">夯</div>
+        <div class="tier-dropzone" data-dropzone="tier" data-tier="夯"></div>
+      </div>
+      <div class="tier-row" style="--tier-color: linear-gradient(180deg, #ff9a2f, #f57b00);">
+        <div class="tier-label long-label" data-rank-label="tierTop">顶级</div>
+        <div class="tier-dropzone" data-dropzone="tier" data-tier="顶级"></div>
+      </div>
+      <div class="tier-row" style="--tier-color: linear-gradient(180deg, #ffdf35, #f3c800);">
+        <div class="tier-label long-label" data-rank-label="tierElite">人上<br>人</div>
+        <div class="tier-dropzone" data-dropzone="tier" data-tier="人上人"></div>
+      </div>
+      <div class="tier-row" style="--tier-color: linear-gradient(180deg, #60de55, #35c936);">
+        <div class="tier-label" data-rank-label="tierNpc">NPC</div>
+        <div class="tier-dropzone" data-dropzone="tier" data-tier="NPC"></div>
+      </div>
+      <div class="tier-row" style="--tier-color: linear-gradient(180deg, #5e59ef, #3f3aca);">
+        <div class="tier-label long-label" data-rank-label="tierLame">拉完<br>了</div>
+        <div class="tier-dropzone" data-dropzone="tier" data-tier="拉完了"></div>
+      </div>
+      <div class="tier-row unassigned-row" style="--tier-color: linear-gradient(180deg, #aaa, #858585);">
+        <div class="tier-label unassigned-label" data-rank-label="tierUnassigned">未<br>分<br>配</div>
+        <div id="materialGrid" class="tier-dropzone material-grid" data-dropzone="materials"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="demo-controls" data-i18n-aria="demoToolsAria" aria-label="演示模式工具">
+    <button class="control-button name-toggle" type="button" aria-label="切换文件名显示">
+      <span class="name-glyph" aria-hidden="true">Aa</span>
+      <span class="name-label"></span>
+    </button>
+    <button class="control-button theme-toggle" type="button" aria-label="切换页面主题">
+      <span class="theme-glyph" aria-hidden="true"></span>
+      <span class="theme-label"></span>
+    </button>
+    <button class="control-button language-toggle" type="button" aria-label="切换语言">
+      <span class="name-glyph" aria-hidden="true">文</span>
+      <span class="language-label"></span>
+    </button>
+    <button id="exitDemoButton" class="control-button" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m6 6 12 12M18 6 6 18"></path>
+      </svg>
+      <span data-i18n="exitDemo">退出演示</span>
+    </button>
+  </div>
+
+  <div id="selectedHint" class="selected-hint" role="status" aria-live="polite"></div>
+
+  <template id="imageCardTemplate">
+    <article class="image-card" draggable="true" role="button" tabindex="0" aria-pressed="false">
+      <img alt="">
+      <span class="image-name"></span>
+      <button class="remove-image" type="button" aria-label="删除这张图片">×</button>
+    </article>
+  </template>
+
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const translations = {
+        zh: {
+          brandMark: '夯',
+          title: '从夯到拉模拟器',
+          subtitle: '上传图片，拖入等级，开启演示后即可录制',
+          upload: '上传图片',
+          clear: '清空',
+          demo: '演示模式',
+          exitDemo: '退出演示',
+          toolbarAria: '操作工具栏',
+          boardAria: '从夯到拉排行画布',
+          demoToolsAria: '演示模式工具',
+          tierGoat: '夯',
+          tierTop: '顶级',
+          tierElite: '人上<br>人',
+          tierNpc: 'NPC',
+          tierLame: '拉完<br>了',
+          tierUnassigned: '未<br>分<br>配',
+          showNames: '显示名称',
+          hideNames: '隐藏名称',
+          showNamesAria: '显示图片文件名',
+          hideNamesAria: '隐藏图片文件名',
+          lightMode: '白天模式',
+          darkMode: '黑夜模式',
+          switchLightAria: '切换到白天模式',
+          switchDarkAria: '切换到黑夜模式',
+          languageTarget: 'EN',
+          languageAria: '切换到英文',
+          unnamed: '未命名素材',
+          noImages: '没有检测到可用的图片文件',
+          added: (count) => `已添加 ${count} 张图片`,
+          cardAria: (name) => `${name}，点击选中后再点击等级栏，或直接拖拽`,
+          removeImage: '删除这张图片',
+          selectionCancelled: '已取消选中',
+          selected: '已选中，点击任意等级即可移入',
+          demoEntered: '已进入演示模式，按 Esc 退出',
+          clearConfirm: '确定要清空全部素材和排名吗？',
+          cleared: '画布已清空',
+          deleted: '已删除选中素材'
+        },
+        en: {
+          brandMark: 'G',
+          title: 'GOAT-to-Lame Tier List',
+          subtitle: 'Upload images, rank them, then present or record',
+          upload: 'Upload',
+          clear: 'Clear',
+          demo: 'Present',
+          exitDemo: 'Exit',
+          toolbarAria: 'Editor toolbar',
+          boardAria: 'GOAT-to-Lame ranking board',
+          demoToolsAria: 'Presentation controls',
+          tierGoat: 'GOAT',
+          tierTop: 'TOP',
+          tierElite: 'ELITE',
+          tierNpc: 'NPC',
+          tierLame: 'LAME',
+          tierUnassigned: 'UN<br>RANKED',
+          showNames: 'Show names',
+          hideNames: 'Hide names',
+          showNamesAria: 'Show image file names',
+          hideNamesAria: 'Hide image file names',
+          lightMode: 'Light mode',
+          darkMode: 'Dark mode',
+          switchLightAria: 'Switch to light mode',
+          switchDarkAria: 'Switch to dark mode',
+          languageTarget: '中文',
+          languageAria: 'Switch to Chinese',
+          unnamed: 'Untitled image',
+          noImages: 'No valid image files found',
+          added: (count) => `${count} image${count === 1 ? '' : 's'} added`,
+          cardAria: (name) => `${name}. Select it and click a tier, or drag it directly.`,
+          removeImage: 'Remove this image',
+          selectionCancelled: 'Selection cleared',
+          selected: 'Selected. Click any tier to move it.',
+          demoEntered: 'Presentation mode enabled. Press Esc to exit.',
+          clearConfirm: 'Clear all images and rankings?',
+          cleared: 'Board cleared',
+          deleted: 'Selected image removed'
+        }
+      };
+
+      const currentLanguage = () => (root.dataset.language === 'en' ? 'en' : 'zh');
+      const t = (key, ...args) => {
+        const value = translations[currentLanguage()][key];
+        return typeof value === 'function' ? value(...args) : value;
+      };
+      const fileInput = document.getElementById('fileInput');
+      const uploadButton = document.getElementById('uploadButton');
+      const clearButton = document.getElementById('clearButton');
+      const demoButton = document.getElementById('demoButton');
+      const exitDemoButton = document.getElementById('exitDemoButton');
+      const materialGrid = document.getElementById('materialGrid');
+      const selectedHint = document.getElementById('selectedHint');
+      const cardTemplate = document.getElementById('imageCardTemplate');
+      const dropzones = [...document.querySelectorAll('[data-dropzone]')];
+      const themeButtons = [...document.querySelectorAll('.theme-toggle')];
+      const nameButtons = [...document.querySelectorAll('.name-toggle')];
+      const languageButtons = [...document.querySelectorAll('.language-toggle')];
+
+      let draggedCard = null;
+      let dragPreview = null;
+      let selectedCard = null;
+      let nextId = 1;
+      let hintTimer = null;
+
+      const imageFilesOnly = (files) => [...files].filter((file) => file.type.startsWith('image/'));
+      const baseName = (name) => name.replace(/\.[^.]+$/, '') || t('unnamed');
+
+      function readFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.addEventListener('load', () => resolve(reader.result));
+          reader.addEventListener('error', reject);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function addFiles(files) {
+        const imageFiles = imageFilesOnly(files);
+        if (!imageFiles.length) {
+          showHint(t('noImages'));
+          return;
+        }
+
+        const results = await Promise.allSettled(
+          imageFiles.map(async (file) => ({ file, source: await readFile(file) }))
+        );
+
+        let added = 0;
+        for (const result of results) {
+          if (result.status !== 'fulfilled') continue;
+          createCard(result.value.source, baseName(result.value.file.name));
+          added += 1;
+        }
+
+        updateControls();
+        showHint(t('added', added));
+        fileInput.value = '';
+      }
+
+      function createCard(source, name) {
+        const card = cardTemplate.content.firstElementChild.cloneNode(true);
+        const id = `material-${nextId++}`;
+        const image = card.querySelector('img');
+        const nameNode = card.querySelector('.image-name');
+        const removeButton = card.querySelector('.remove-image');
+
+        card.dataset.id = id;
+        card.dataset.name = name;
+        card.setAttribute('aria-label', t('cardAria', name));
+        image.src = source;
+        image.alt = name;
+        nameNode.textContent = name;
+        removeButton.setAttribute('aria-label', t('removeImage'));
+
+        card.addEventListener('dragstart', (event) => {
+          draggedCard = card;
+          selectCard(card, false);
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', id);
+          createDragPreview(card, event);
+          card.classList.add('is-dragging');
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('is-dragging');
+          draggedCard = null;
+          removeDragPreview();
+          clearDragStyles();
+        });
+
+        card.addEventListener('click', (event) => {
+          if (event.target.closest('.remove-image')) return;
+          selectCard(selectedCard === card ? null : card);
+        });
+
+        card.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectCard(selectedCard === card ? null : card);
+          }
+        });
+
+        removeButton.addEventListener('click', (event) => {
+          event.stopPropagation();
+          if (selectedCard === card) selectCard(null, false);
+          card.remove();
+          updateControls();
+        });
+
+        materialGrid.appendChild(card);
+      }
+
+      function createDragPreview(card, event) {
+        removeDragPreview();
+
+        const scale = 1.8;
+        const baseWidth = card.offsetWidth;
+        const baseHeight = card.offsetHeight;
+        const previewWidth = Math.round(baseWidth * scale);
+        const previewHeight = Math.round(baseHeight * scale);
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const image = card.querySelector('img');
+        const nameNode = card.querySelector('.image-name');
+        const nameVisible = getComputedStyle(nameNode).display !== 'none';
+        const imageHeight = Math.round(baseWidth * scale);
+        const radius = 10 * scale;
+
+        canvas.className = 'drag-preview-canvas';
+        canvas.width = Math.round(previewWidth * pixelRatio);
+        canvas.height = Math.round(previewHeight * pixelRatio);
+        canvas.style.width = `${previewWidth}px`;
+        canvas.style.height = `${previewHeight}px`;
+        document.body.appendChild(canvas);
+
+        context.scale(pixelRatio, pixelRatio);
+        context.beginPath();
+        context.moveTo(radius, 0);
+        context.lineTo(previewWidth - radius, 0);
+        context.quadraticCurveTo(previewWidth, 0, previewWidth, radius);
+        context.lineTo(previewWidth, previewHeight - radius);
+        context.quadraticCurveTo(previewWidth, previewHeight, previewWidth - radius, previewHeight);
+        context.lineTo(radius, previewHeight);
+        context.quadraticCurveTo(0, previewHeight, 0, previewHeight - radius);
+        context.lineTo(0, radius);
+        context.quadraticCurveTo(0, 0, radius, 0);
+        context.closePath();
+        context.clip();
+
+        context.fillStyle = getComputedStyle(card).backgroundColor;
+        context.fillRect(0, 0, previewWidth, previewHeight);
+        context.drawImage(image, 0, 0, previewWidth, imageHeight);
+
+        if (nameVisible && previewHeight > imageHeight) {
+          const nameStyle = getComputedStyle(nameNode);
+          const labelAreaHeight = previewHeight - imageHeight;
+          let label = nameNode.textContent || '';
+
+          context.fillStyle = nameStyle.backgroundColor;
+          context.fillRect(0, imageHeight, previewWidth, labelAreaHeight);
+          context.fillStyle = nameStyle.color;
+          context.font = `800 ${Math.round(10 * scale)}px sans-serif`;
+          context.textAlign = 'center';
+          context.textBaseline = 'middle';
+
+          while (label.length > 1 && context.measureText(label).width > previewWidth - 16) {
+            label = `${label.slice(0, -2)}…`;
+          }
+
+          context.fillText(label, previewWidth / 2, imageHeight + labelAreaHeight / 2);
+        }
+
+        event.dataTransfer.setDragImage(canvas, previewWidth / 2, previewHeight / 2);
+        dragPreview = canvas;
+      }
+
+      function removeDragPreview() {
+        if (!dragPreview) return;
+        dragPreview.remove();
+        dragPreview = null;
+      }
+
+      function selectCard(card, announce = true) {
+        if (selectedCard) {
+          selectedCard.classList.remove('is-selected');
+          selectedCard.setAttribute('aria-pressed', 'false');
+        }
+
+        selectedCard = card;
+
+        if (!selectedCard) {
+          if (announce) showHint(t('selectionCancelled'));
+          return;
+        }
+
+        selectedCard.classList.add('is-selected');
+        selectedCard.setAttribute('aria-pressed', 'true');
+        if (announce) showHint(t('selected'));
+      }
+
+      function placeCard(zone, card, clientX = null) {
+        if (!card) return;
+        const insertBefore = clientX === null ? null : getInsertionPoint(zone, clientX, card);
+
+        if (insertBefore) {
+          zone.insertBefore(card, insertBefore);
+        } else {
+          zone.appendChild(card);
+        }
+
+        selectCard(null, false);
+        updateControls();
+      }
+
+      function getInsertionPoint(zone, clientX, movingCard) {
+        const cards = [...zone.querySelectorAll('.image-card:not(.is-dragging)')]
+          .filter((card) => card !== movingCard);
+
+        return cards.reduce(
+          (closest, card) => {
+            const box = card.getBoundingClientRect();
+            const offset = clientX - (box.left + box.width / 2);
+            return offset < 0 && offset > closest.offset ? { offset, card } : closest;
+          },
+          { offset: Number.NEGATIVE_INFINITY, card: null }
+        ).card;
+      }
+
+      function updateControls() {
+        clearButton.disabled = !document.querySelector('.image-card');
+      }
+
+      function showHint(message) {
+        selectedHint.textContent = message;
+        selectedHint.classList.add('is-visible');
+        clearTimeout(hintTimer);
+        hintTimer = setTimeout(() => selectedHint.classList.remove('is-visible'), 2000);
+      }
+
+      function clearDragStyles() {
+        dropzones.forEach((zone) => zone.classList.remove('is-dragover'));
+      }
+
+      function updateThemeButtons() {
+        const dark = root.dataset.theme === 'dark';
+        themeButtons.forEach((button) => {
+          button.querySelector('.theme-glyph').textContent = dark ? '☀' : '☾';
+          button.querySelector('.theme-label').textContent = dark ? t('lightMode') : t('darkMode');
+          button.setAttribute('aria-label', dark ? t('switchLightAria') : t('switchDarkAria'));
+        });
+      }
+
+      function toggleTheme() {
+        const nextTheme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        root.dataset.theme = nextTheme;
+        try {
+          localStorage.setItem('hangla-theme', nextTheme);
+        } catch {
+          // Local storage may be unavailable when the browser blocks file-page storage.
+        }
+        updateThemeButtons();
+      }
+
+      function updateNameButtons() {
+        const namesVisible = root.dataset.names === 'show';
+        nameButtons.forEach((button) => {
+          button.querySelector('.name-label').textContent = namesVisible ? t('hideNames') : t('showNames');
+          button.setAttribute('aria-label', namesVisible ? t('hideNamesAria') : t('showNamesAria'));
+          button.setAttribute('aria-pressed', String(namesVisible));
+        });
+      }
+
+      function toggleNames() {
+        const namesVisible = root.dataset.names !== 'show';
+        root.dataset.names = namesVisible ? 'show' : 'hide';
+        try {
+          localStorage.setItem('hangla-show-names', String(namesVisible));
+        } catch {
+          // Local storage may be unavailable when the browser blocks file-page storage.
+        }
+        updateNameButtons();
+      }
+
+      function updateLanguage() {
+        const language = currentLanguage();
+        root.lang = language === 'en' ? 'en' : 'zh-CN';
+        document.title = t('title');
+
+        document.querySelectorAll('[data-i18n]').forEach((element) => {
+          element.textContent = t(element.dataset.i18n);
+        });
+
+        document.querySelectorAll('[data-i18n-aria]').forEach((element) => {
+          element.setAttribute('aria-label', t(element.dataset.i18nAria));
+        });
+
+        document.querySelectorAll('[data-rank-label]').forEach((element) => {
+          element.innerHTML = t(element.dataset.rankLabel);
+        });
+
+        languageButtons.forEach((button) => {
+          button.querySelector('.language-label').textContent = t('languageTarget');
+          button.setAttribute('aria-label', t('languageAria'));
+        });
+
+        document.querySelectorAll('.image-card').forEach((card) => {
+          const name = card.dataset.name || card.querySelector('.image-name')?.textContent || t('unnamed');
+          card.setAttribute('aria-label', t('cardAria', name));
+          card.querySelector('.remove-image')?.setAttribute('aria-label', t('removeImage'));
+        });
+
+        updateThemeButtons();
+        updateNameButtons();
+      }
+
+      function toggleLanguage() {
+        const nextLanguage = currentLanguage() === 'zh' ? 'en' : 'zh';
+        root.dataset.language = nextLanguage;
+        try {
+          localStorage.setItem('hangla-language', nextLanguage);
+        } catch {
+          // Local storage may be unavailable when the browser blocks file-page storage.
+        }
+        updateLanguage();
+      }
+
+      function setDemoMode(active) {
+        document.body.classList.toggle('demo-mode', active);
+        demoButton.setAttribute('aria-pressed', String(active));
+        if (active) showHint(t('demoEntered'));
+      }
+
+      uploadButton.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => addFiles(fileInput.files));
+      demoButton.addEventListener('click', () => setDemoMode(true));
+      exitDemoButton.addEventListener('click', () => setDemoMode(false));
+      themeButtons.forEach((button) => button.addEventListener('click', toggleTheme));
+      nameButtons.forEach((button) => button.addEventListener('click', toggleNames));
+      languageButtons.forEach((button) => button.addEventListener('click', toggleLanguage));
+
+      clearButton.addEventListener('click', () => {
+        if (!document.querySelector('.image-card')) return;
+        if (!confirm(t('clearConfirm'))) return;
+        document.querySelectorAll('.image-card').forEach((card) => card.remove());
+        selectCard(null, false);
+        updateControls();
+        showHint(t('cleared'));
+      });
+
+      dropzones.forEach((zone) => {
+        zone.addEventListener('dragenter', (event) => {
+          event.preventDefault();
+          zone.classList.add('is-dragover');
+        });
+
+        zone.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          if (event.dataTransfer) event.dataTransfer.dropEffect = draggedCard ? 'move' : 'copy';
+          zone.classList.add('is-dragover');
+        });
+
+        zone.addEventListener('dragleave', (event) => {
+          if (!zone.contains(event.relatedTarget)) zone.classList.remove('is-dragover');
+        });
+
+        zone.addEventListener('drop', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          clearDragStyles();
+
+          if (draggedCard) {
+            placeCard(zone, draggedCard, event.clientX);
+            return;
+          }
+
+          if (event.dataTransfer?.files?.length) addFiles(event.dataTransfer.files);
+        });
+
+        zone.addEventListener('click', (event) => {
+          if (!selectedCard || event.target.closest('.image-card')) return;
+          placeCard(zone, selectedCard);
+        });
+      });
+
+      document.addEventListener('dragover', (event) => {
+        if (!event.dataTransfer?.types?.includes('Files')) return;
+        event.preventDefault();
+        materialGrid.classList.add('is-dragover');
+      });
+
+      document.addEventListener('dragleave', (event) => {
+        if (event.clientX === 0 && event.clientY === 0) materialGrid.classList.remove('is-dragover');
+      });
+
+      document.addEventListener('drop', (event) => {
+        materialGrid.classList.remove('is-dragover');
+        if (!event.dataTransfer?.files?.length) return;
+        event.preventDefault();
+        addFiles(event.dataTransfer.files);
+      });
+
+      document.addEventListener('paste', (event) => {
+        const pastedFiles = [...(event.clipboardData?.files || [])];
+        if (imageFilesOnly(pastedFiles).length) addFiles(pastedFiles);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          if (document.body.classList.contains('demo-mode')) {
+            setDemoMode(false);
+          } else {
+            selectCard(null);
+          }
+        }
+
+        if ((event.key === 'Delete' || event.key === 'Backspace') && selectedCard) {
+          event.preventDefault();
+          selectedCard.remove();
+          selectCard(null, false);
+          updateControls();
+          showHint(t('deleted'));
+        }
+      });
+
+      updateLanguage();
+      updateControls();
+    })();
+  </script>
+</body>
+</html>
