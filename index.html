@@ -349,18 +349,18 @@
       user-select: none;
     }
 
-    .image-card:hover {
-      z-index: 2;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 18px rgba(18, 22, 29, 0.22);
-    }
-
-    .material-grid .image-card:hover,
-    .material-grid .image-card:active {
+    .image-card:hover,
+    .image-card:active {
       z-index: 12;
       transform: translateY(-8px) scale(1.8);
       transform-origin: center bottom;
       box-shadow: 0 14px 28px rgba(18, 22, 29, 0.28);
+    }
+
+    .tier-row:first-child .image-card:hover,
+    .tier-row:first-child .image-card:active {
+      transform: translateY(8px) scale(1.8);
+      transform-origin: center top;
     }
 
     .image-card.is-selected {
@@ -376,6 +376,11 @@
       transform: translateY(-8px) scale(1.8);
       transform-origin: center bottom;
       box-shadow: 0 14px 28px rgba(18, 22, 29, 0.28);
+    }
+
+    .tier-row:first-child .image-card.is-dragging {
+      transform: translateY(8px) scale(1.8);
+      transform-origin: center top;
     }
 
     .drag-preview-canvas {
