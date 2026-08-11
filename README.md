@@ -1,74 +1,52 @@
-# 从夯到拉模拟器
+# GOAT-to-Lame Tier List
 
-一个无需安装依赖、打开即用的图片 Tier List 工具。支持上传素材、拖拽排行和演示模式，适合制作梗图排名、人物评价、职业排行以及录屏内容。
+A zero-setup image tier-list tool that runs directly in your browser. Upload images, drag them into tiers, and switch to presentation mode for recording.
 
-![从夯到拉模拟器演示模式](assets/preview.png)
+![GOAT-to-Lame Tier List preview](assets/preview.png)
 
-## 功能
+## Features
 
-- 支持一次上传多张图片，也可以把图片拖入页面或直接从剪贴板粘贴
-- 在「夯 / 顶级 / 人上人 / NPC / 拉完了 / 未分配」之间拖拽素材
-- 支持同一等级内重新排序，也可先选中图片，再点击目标等级移动
-- 鼠标悬浮放大图片，倍率可在 `1.0×–2.5×` 之间调节，默认 `1.5×`
-- 图片文件名可显示或隐藏，默认隐藏
-- 支持白天模式、黑夜模式以及中英文界面切换
-- 演示模式会隐藏编辑区域，保留低干扰控制栏，方便录屏
-- 支持删除单张图片或清空全部素材
-- 单文件实现，无框架、无构建步骤、无后端服务
+- Upload multiple images, drag files onto the page, or paste from the clipboard
+- Drag images between tiers and reorder them within a tier
+- Adjustable hover zoom from `1.0×` to `2.5×`
+- Show or hide image names
+- Light and dark themes
+- Chinese and English interfaces
+- Presentation mode for clean screen recording
+- Runs locally with no dependencies or uploads
 
-## 快速开始
+## Usage
 
-下载项目后，直接用现代浏览器打开 [`index.html`](index.html) 即可使用。
+1. Download the project.
+2. Double-click `index.html` to open it in your browser.
+3. Add images and drag them into the desired tiers.
+4. Enable presentation mode when you are ready to present or record.
 
-也可以在项目目录启动一个本地静态服务器：
+> Images and rankings are stored only in the current page and will be cleared after refreshing or closing it. Interface preferences are saved locally when supported by the browser.
 
-```bash
-python3 -m http.server 8000
-```
+<details>
+<summary>中文说明</summary>
 
-然后访问 [http://localhost:8000](http://localhost:8000)。
+## 从夯到拉模拟器
 
-## 使用方法
+一个无需安装、双击即可使用的图片排行工具，适合制作排行、展示和录屏。
 
-1. 点击「上传图片」，或将图片拖入页面，也可以复制图片后在页面中粘贴。
-2. 新添加的图片会进入「未分配」区域。
-3. 把图片拖到对应等级；在同一行内拖动可以调整前后顺序。
-4. 根据需要切换主题、语言、名称显示和悬浮放大倍率。
-5. 排名完成后进入「演示模式」，即可进行展示或录屏。
+### 主要功能
 
-## 快捷操作
+- 支持上传、拖入和粘贴多张图片
+- 支持跨等级拖拽和同等级排序
+- 悬浮放大倍率可在 `1.0×–2.5×` 之间调节
+- 支持图片名称显示开关、白天/黑夜模式和中英文切换
+- 演示模式适合干净录屏
+- 图片只在浏览器本地处理，不会上传
 
-| 操作 | 功能 |
-| --- | --- |
-| `Enter` / `Space` | 选中或取消当前聚焦的图片 |
-| 点击图片，再点击等级空白区域 | 将所选图片移动到该等级 |
-| `Delete` / `Backspace` | 删除已选中的图片 |
-| `Esc` | 退出演示模式；普通模式下取消选中 |
-| `Ctrl/⌘ + V` | 粘贴剪贴板中的图片 |
+### 使用方法
 
-## 数据与隐私
+1. 下载项目。
+2. 双击 `index.html` 打开。
+3. 添加图片并拖入对应等级。
+4. 排好后进入演示模式即可展示或录屏。
 
-- 图片只在当前浏览器页面中处理，不会上传到服务器。
-- 刷新或关闭页面后，图片和排行会被清空。
-- 主题、语言、名称显示状态和放大倍率会尝试保存在浏览器本地存储中。
-- 如果浏览器限制本地文件页面使用存储，界面偏好可能无法保存。
+> 刷新或关闭页面会清空图片和排行；界面偏好会在浏览器允许时保存在本地。
 
-## 浏览器兼容性
-
-建议使用最新版 Chrome、Edge、Safari 或 Firefox。拖拽和演示功能更适合在桌面浏览器中使用。
-
-## 项目结构
-
-```text
-.
-├── index.html          # 模拟器主体，包含 HTML、CSS 和 JavaScript
-├── assets/
-│   └── preview.png     # README 预览图
-└── README.md
-```
-
-## 自定义
-
-- 等级名称和顺序位于 `index.html` 的 `.tier-row` 区域。
-- 每个等级的颜色可以通过对应行的 `--tier-color` 修改。
-- 页面主题、卡片尺寸和默认放大倍率可以在顶部 CSS 变量中调整。
+</details>
