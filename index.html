@@ -11,14 +11,22 @@
         const savedTheme = localStorage.getItem('hangla-theme');
         const savedNames = localStorage.getItem('hangla-show-names');
         const savedLanguage = localStorage.getItem('hangla-language');
+        const savedScale = Number.parseFloat(localStorage.getItem('hangla-hover-scale'));
         const systemTheme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        const hoverScale = Number.isFinite(savedScale) && savedScale >= 1 && savedScale <= 2.5
+          ? savedScale
+          : 1.5;
         document.documentElement.dataset.theme = savedTheme || systemTheme;
         document.documentElement.dataset.names = savedNames === 'true' ? 'show' : 'hide';
         document.documentElement.dataset.language = savedLanguage === 'en' ? 'en' : 'zh';
+        document.documentElement.dataset.hoverScale = hoverScale.toFixed(1);
+        document.documentElement.style.setProperty('--hover-scale', hoverScale);
       } catch {
         document.documentElement.dataset.theme = 'light';
         document.documentElement.dataset.names = 'hide';
         document.documentElement.dataset.language = 'zh';
+        document.documentElement.dataset.hoverScale = '1.5';
+        document.documentElement.style.setProperty('--hover-scale', 1.5);
       }
     })();
   </script>
@@ -42,6 +50,7 @@
       --shadow: 0 12px 32px rgba(25, 28, 36, 0.08);
       --label-width: clamp(92px, 9vw, 120px);
       --tile-size: clamp(76px, 7vw, 102px);
+      --hover-scale: 1.5;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
         "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     }
@@ -243,6 +252,35 @@
       line-height: 1;
     }
 
+    .scale-control {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      gap: 8px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--ink);
+      background: var(--surface-soft);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .scale-control input {
+      width: 76px;
+      margin: 0;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .scale-control output {
+      min-width: 35px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
     .tier-board-wrap {
       overflow: hidden;
       border: 1px solid var(--line);
@@ -336,34 +374,48 @@
       width: var(--tile-size);
       flex: 0 0 var(--tile-size);
       padding: 0;
+      overflow: visible;
+      border: 0;
+      border-radius: 10px;
+      color: var(--card-name);
+      background: transparent;
+      cursor: grab;
+      box-shadow: none;
+      transform: none;
+      user-select: none;
+    }
+
+    .image-visual {
+      position: relative;
+      width: 100%;
       overflow: hidden;
       border: 2px solid transparent;
       border-radius: 10px;
       color: var(--card-name);
       background: var(--card-bg);
-      cursor: grab;
       box-shadow: 0 4px 12px rgba(18, 22, 29, 0.16);
       transition: border-color 130ms ease, box-shadow 130ms ease, transform 130ms ease,
         opacity 130ms ease;
       transform-origin: center center;
-      user-select: none;
+      pointer-events: auto;
     }
 
-    .image-card:hover,
-    .image-card:active {
+    .image-card.is-hovered {
       z-index: 12;
-      transform: translateY(-8px) scale(1.8);
+    }
+
+    .image-card.is-hovered .image-visual {
+      transform: translateY(-8px) scale(var(--hover-scale));
       transform-origin: center bottom;
       box-shadow: 0 14px 28px rgba(18, 22, 29, 0.28);
     }
 
-    .tier-row:first-child .image-card:hover,
-    .tier-row:first-child .image-card:active {
-      transform: translateY(8px) scale(1.8);
+    .tier-row:first-child .image-card.is-hovered .image-visual {
+      transform: translateY(8px) scale(var(--hover-scale));
       transform-origin: center top;
     }
 
-    .image-card.is-selected {
+    .image-card.is-selected .image-visual {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 24%, transparent),
         0 8px 18px rgba(18, 22, 29, 0.18);
@@ -371,16 +423,24 @@
 
     .image-card.is-dragging {
       z-index: 12;
-      opacity: 0.88;
       cursor: grabbing;
-      transform: translateY(-8px) scale(1.8);
+    }
+
+    .image-card.is-dragging .image-visual {
+      opacity: 0.88;
+      transform: translateY(-8px) scale(var(--hover-scale));
       transform-origin: center bottom;
       box-shadow: 0 14px 28px rgba(18, 22, 29, 0.28);
     }
 
-    .tier-row:first-child .image-card.is-dragging {
-      transform: translateY(8px) scale(1.8);
+    .tier-row:first-child .image-card.is-dragging .image-visual {
+      transform: translateY(8px) scale(var(--hover-scale));
       transform-origin: center top;
+    }
+
+    body.is-dragging .image-card:not(.is-dragging) .image-visual {
+      transform: none !important;
+      box-shadow: 0 4px 12px rgba(18, 22, 29, 0.16) !important;
     }
 
     .drag-preview-canvas {
@@ -423,6 +483,7 @@
       position: absolute;
       top: 4px;
       right: 4px;
+      z-index: 2;
       display: grid;
       width: 23px;
       height: 23px;
@@ -433,12 +494,13 @@
       color: #fff;
       background: rgba(14, 17, 23, 0.76);
       cursor: pointer;
+      pointer-events: auto;
       opacity: 0;
       transform: scale(0.85);
       transition: opacity 120ms ease, transform 120ms ease, background 120ms ease;
     }
 
-    .image-card:hover .remove-image,
+    .image-card.is-hovered .remove-image,
     .image-card:focus-within .remove-image {
       opacity: 1;
       transform: scale(1);
@@ -519,6 +581,8 @@
       opacity: 0.24;
       backdrop-filter: blur(14px);
       transition: opacity 160ms ease;
+      flex-wrap: wrap;
+      max-width: calc(100% - 28px);
     }
 
     .demo-mode .demo-controls:hover,
@@ -529,6 +593,11 @@
     .demo-mode .demo-controls .control-button {
       min-height: 38px;
       padding: 0 12px;
+      background: transparent;
+    }
+
+    .demo-mode .demo-controls .scale-control {
+      min-height: 38px;
       background: transparent;
     }
 
@@ -548,7 +617,7 @@
 
       .toolbar {
         display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .control-button {
@@ -599,6 +668,11 @@
 
       .toolbar {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .toolbar .scale-control {
+        grid-column: 1 / -1;
+        justify-content: center;
       }
 
       .tier-board-wrap {
@@ -655,6 +729,10 @@
         padding: 0 9px;
         font-size: 12px;
       }
+
+      .demo-mode .demo-controls .scale-control {
+        min-height: 34px;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -704,6 +782,11 @@
           <span class="theme-glyph" aria-hidden="true"></span>
           <span class="theme-label"></span>
         </button>
+        <label class="scale-control">
+          <span class="scale-label">放大</span>
+          <input class="scale-input" type="range" min="1" max="2.5" step="0.1" value="1.5" aria-label="调整头像放大倍数">
+          <output class="scale-value">1.5×</output>
+        </label>
         <button class="control-button language-toggle" type="button" aria-label="切换语言">
           <span class="name-glyph" aria-hidden="true">文</span>
           <span class="language-label"></span>
@@ -755,6 +838,11 @@
       <span class="theme-glyph" aria-hidden="true"></span>
       <span class="theme-label"></span>
     </button>
+    <label class="scale-control">
+      <span class="scale-label">放大</span>
+      <input class="scale-input" type="range" min="1" max="2.5" step="0.1" value="1.5" aria-label="调整头像放大倍数">
+      <output class="scale-value">1.5×</output>
+    </label>
     <button class="control-button language-toggle" type="button" aria-label="切换语言">
       <span class="name-glyph" aria-hidden="true">文</span>
       <span class="language-label"></span>
@@ -771,9 +859,11 @@
 
   <template id="imageCardTemplate">
     <article class="image-card" draggable="true" role="button" tabindex="0" aria-pressed="false">
-      <img alt="">
-      <span class="image-name"></span>
-      <button class="remove-image" type="button" aria-label="删除这张图片">×</button>
+      <div class="image-visual">
+        <img alt="">
+        <span class="image-name"></span>
+        <button class="remove-image" type="button" draggable="false" aria-label="删除这张图片">×</button>
+      </div>
     </article>
   </template>
 
@@ -806,6 +896,8 @@
           darkMode: '黑夜模式',
           switchLightAria: '切换到白天模式',
           switchDarkAria: '切换到黑夜模式',
+          scaleLabel: '放大',
+          scaleAria: '调整头像放大倍数',
           languageTarget: 'EN',
           languageAria: '切换到英文',
           unnamed: '未命名素材',
@@ -845,6 +937,8 @@
           darkMode: 'Dark mode',
           switchLightAria: 'Switch to light mode',
           switchDarkAria: 'Switch to dark mode',
+          scaleLabel: 'Zoom',
+          scaleAria: 'Adjust image hover zoom',
           languageTarget: '中文',
           languageAria: 'Switch to Chinese',
           unnamed: 'Untitled image',
@@ -878,9 +972,11 @@
       const themeButtons = [...document.querySelectorAll('.theme-toggle')];
       const nameButtons = [...document.querySelectorAll('.name-toggle')];
       const languageButtons = [...document.querySelectorAll('.language-toggle')];
+      const scaleInputs = [...document.querySelectorAll('.scale-input')];
 
       let draggedCard = null;
       let dragPreview = null;
+      let hoveredCard = null;
       let selectedCard = null;
       let nextId = 1;
       let hintTimer = null;
@@ -936,8 +1032,10 @@
         removeButton.setAttribute('aria-label', t('removeImage'));
 
         card.addEventListener('dragstart', (event) => {
+          setHoveredCard(null);
           draggedCard = card;
           selectCard(card, false);
+          document.body.classList.add('is-dragging');
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData('text/plain', id);
           createDragPreview(card, event);
@@ -945,9 +1043,7 @@
         });
 
         card.addEventListener('dragend', () => {
-          card.classList.remove('is-dragging');
-          draggedCard = null;
-          removeDragPreview();
+          resetDragState();
           clearDragStyles();
         });
 
@@ -965,6 +1061,7 @@
 
         removeButton.addEventListener('click', (event) => {
           event.stopPropagation();
+          if (hoveredCard === card) setHoveredCard(null);
           if (selectedCard === card) selectCard(null, false);
           card.remove();
           updateControls();
@@ -976,7 +1073,7 @@
       function createDragPreview(card, event) {
         removeDragPreview();
 
-        const scale = 1.8;
+        const scale = getHoverScale();
         const baseWidth = card.offsetWidth;
         const baseHeight = card.offsetHeight;
         const previewWidth = Math.round(baseWidth * scale);
@@ -984,6 +1081,7 @@
         const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
+        const visual = card.querySelector('.image-visual');
         const image = card.querySelector('img');
         const nameNode = card.querySelector('.image-name');
         const nameVisible = getComputedStyle(nameNode).display !== 'none';
@@ -1011,7 +1109,7 @@
         context.closePath();
         context.clip();
 
-        context.fillStyle = getComputedStyle(card).backgroundColor;
+        context.fillStyle = getComputedStyle(visual).backgroundColor;
         context.fillRect(0, 0, previewWidth, previewHeight);
         context.drawImage(image, 0, 0, previewWidth, imageHeight);
 
@@ -1044,6 +1142,32 @@
         dragPreview = null;
       }
 
+      function setHoveredCard(nextCard) {
+        document.querySelectorAll('.image-card.is-hovered').forEach((card) => {
+          if (card !== nextCard) card.classList.remove('is-hovered');
+        });
+
+        hoveredCard = null;
+        if (!nextCard || draggedCard || document.body.classList.contains('is-dragging')) return;
+
+        nextCard.classList.add('is-hovered');
+        hoveredCard = nextCard;
+      }
+
+      function resetDragState() {
+        setHoveredCard(null);
+        document.body.classList.remove('is-dragging');
+        document.querySelectorAll('.image-card.is-dragging').forEach((card) => {
+          card.classList.remove('is-dragging');
+        });
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement && activeElement.closest('.image-card')) {
+          activeElement.blur();
+        }
+        draggedCard = null;
+        removeDragPreview();
+      }
+
       function selectCard(card, announce = true) {
         if (selectedCard) {
           selectedCard.classList.remove('is-selected');
@@ -1064,6 +1188,7 @@
 
       function placeCard(zone, card, clientX = null) {
         if (!card) return;
+        setHoveredCard(null);
         const insertBefore = clientX === null ? null : getInsertionPoint(zone, clientX, card);
 
         if (insertBefore) {
@@ -1145,6 +1270,38 @@
         updateNameButtons();
       }
 
+      function getHoverScale() {
+        const value = Number.parseFloat(root.dataset.hoverScale);
+        return Number.isFinite(value) ? Math.min(2.5, Math.max(1, value)) : 1.5;
+      }
+
+      function updateScaleControls() {
+        const value = getHoverScale();
+        scaleInputs.forEach((input) => {
+          input.value = value.toFixed(1);
+          input.setAttribute('aria-label', t('scaleAria'));
+          const control = input.closest('.scale-control');
+          control.querySelector('.scale-label').textContent = t('scaleLabel');
+          control.querySelector('.scale-value').textContent = `${value.toFixed(1)}×`;
+        });
+      }
+
+      function setHoverScale(nextValue) {
+        const parsedValue = Number.parseFloat(nextValue);
+        const value = Number.isFinite(parsedValue)
+          ? Math.min(2.5, Math.max(1, parsedValue))
+          : 1.5;
+
+        root.dataset.hoverScale = value.toFixed(1);
+        root.style.setProperty('--hover-scale', value);
+        try {
+          localStorage.setItem('hangla-hover-scale', value.toFixed(1));
+        } catch {
+          // Local storage may be unavailable when the browser blocks file-page storage.
+        }
+        updateScaleControls();
+      }
+
       function updateLanguage() {
         const language = currentLanguage();
         root.lang = language === 'en' ? 'en' : 'zh-CN';
@@ -1175,6 +1332,7 @@
 
         updateThemeButtons();
         updateNameButtons();
+        updateScaleControls();
       }
 
       function toggleLanguage() {
@@ -1201,10 +1359,14 @@
       themeButtons.forEach((button) => button.addEventListener('click', toggleTheme));
       nameButtons.forEach((button) => button.addEventListener('click', toggleNames));
       languageButtons.forEach((button) => button.addEventListener('click', toggleLanguage));
+      scaleInputs.forEach((input) => {
+        input.addEventListener('input', () => setHoverScale(input.value));
+      });
 
       clearButton.addEventListener('click', () => {
         if (!document.querySelector('.image-card')) return;
         if (!confirm(t('clearConfirm'))) return;
+        setHoveredCard(null);
         document.querySelectorAll('.image-card').forEach((card) => card.remove());
         selectCard(null, false);
         updateControls();
@@ -1234,6 +1396,7 @@
 
           if (draggedCard) {
             placeCard(zone, draggedCard, event.clientX);
+            resetDragState();
             return;
           }
 
@@ -1268,6 +1431,22 @@
         if (imageFilesOnly(pastedFiles).length) addFiles(pastedFiles);
       });
 
+      document.addEventListener('pointermove', (event) => {
+        if (draggedCard || document.body.classList.contains('is-dragging')) {
+          setHoveredCard(null);
+          return;
+        }
+
+        const target = event.target instanceof Element ? event.target.closest('.image-card') : null;
+        setHoveredCard(target);
+      });
+
+      document.addEventListener('pointerleave', () => setHoveredCard(null));
+
+      window.addEventListener('blur', () => {
+        if (draggedCard) resetDragState();
+      });
+
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
           if (document.body.classList.contains('demo-mode')) {
@@ -1279,6 +1458,7 @@
 
         if ((event.key === 'Delete' || event.key === 'Backspace') && selectedCard) {
           event.preventDefault();
+          if (hoveredCard === selectedCard) setHoveredCard(null);
           selectedCard.remove();
           selectCard(null, false);
           updateControls();
