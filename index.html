@@ -48,8 +48,8 @@
       --danger: #e83b45;
       --danger-hover: #d92c37;
       --shadow: 0 12px 32px rgba(25, 28, 36, 0.08);
-      --label-width: clamp(92px, 9vw, 120px);
-      --tile-size: clamp(76px, 7vw, 102px);
+      --label-width: clamp(84px, 8.5vw, 150px);
+      --tile-size: clamp(72px, 7vw, 118px);
       --hover-scale: 1.5;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
         "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -105,9 +105,12 @@
     }
 
     .app-shell {
-      width: min(1460px, calc(100% - 28px));
+      display: flex;
+      width: calc(100% - clamp(16px, 2vw, 40px));
+      min-height: 100svh;
+      flex-direction: column;
       margin: 0 auto;
-      padding: 16px 0 26px;
+      padding: clamp(8px, 1.2svh, 16px) 0 clamp(14px, 1.8svh, 26px);
     }
 
     .topbar {
@@ -282,6 +285,10 @@
     }
 
     .tier-board-wrap {
+      display: flex;
+      min-height: 620px;
+      flex: 1 0 auto;
+      flex-direction: column;
       overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -293,7 +300,8 @@
     .tier-row {
       display: grid;
       grid-template-columns: var(--label-width) minmax(0, 1fr);
-      min-height: 108px;
+      min-height: 96px;
+      flex: 1 0 auto;
       background: var(--board);
     }
 
@@ -302,7 +310,8 @@
     }
 
     .tier-row.unassigned-row {
-      min-height: 164px;
+      min-height: clamp(160px, 28svh, 360px);
+      flex-grow: 1.15;
     }
 
     .tier-label {
@@ -555,15 +564,11 @@
     }
 
     .demo-mode .app-shell {
-      padding-top: 14px;
+      padding: 14px 0;
     }
 
     .demo-mode .topbar {
       display: none;
-    }
-
-    .demo-mode .tier-row:not(.unassigned-row) {
-      min-height: 124px;
     }
 
     .demo-mode .demo-controls {
@@ -605,7 +610,7 @@
       display: none;
     }
 
-    @media (max-width: 840px) {
+    @media (max-width: 1120px) {
       .topbar {
         align-items: stretch;
         flex-direction: column;
@@ -617,7 +622,7 @@
 
       .toolbar {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
       .control-button {
@@ -625,12 +630,22 @@
         padding: 0 9px;
       }
 
+      .tier-board-wrap {
+        min-height: 600px;
+      }
+
       .tier-row {
-        min-height: 100px;
+        min-height: 92px;
       }
 
       .tier-row.unassigned-row {
-        min-height: 150px;
+        min-height: 138px;
+      }
+    }
+
+    @media (max-width: 840px) {
+      .toolbar {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
@@ -676,15 +691,16 @@
       }
 
       .tier-board-wrap {
+        min-height: 548px;
         border-radius: 10px;
       }
 
       .tier-row {
-        min-height: 92px;
+        min-height: 84px;
       }
 
       .tier-row.unassigned-row {
-        min-height: 136px;
+        min-height: 126px;
       }
 
       .tier-label {
@@ -718,10 +734,6 @@
       .demo-mode .demo-controls {
         top: 8px;
         right: 8px;
-      }
-
-      .demo-mode .tier-row:not(.unassigned-row) {
-        min-height: 102px;
       }
 
       .demo-mode .demo-controls .control-button {
